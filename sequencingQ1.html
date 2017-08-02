@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" lang="en-us">
+    <title>Drop Down Selection</title>
+<!--    <link href="dropDownStyles.css" rel="stylesheet" type="text/css">-->
+    <style>
+      body {
+        background: url(https://www.wisc-online.com/ARISE_Files/Images/grid_noise.png);
+        font-family: Georgia, Sans-Serif;
+        min-height: 886px;
+      }
+      
+      h2 {
+        color: #604383;
+      }
+      
+      main {
+        margin: 25px;
+        font-size: 1.38rem;
+      }
+      
+      #btnClear, #btnSubmit {
+        background-color: #E5DEEE;
+        border: 1px solid #604383;
+        border-radius: 5px;
+        box-shadow: inset 0 0 0 1px #a389c2;
+        color: #604383;
+        font-family: Georgia, Sans-Serif;
+        font-size: 1.38rem;
+        margin: 0.5em;
+        min-width: 150px;
+        padding: 6px;
+      }
+      
+      #btnExit {
+        background-color: #ffb3b3;
+        border: 1px solid #b30000;
+        border-radius: 5px;
+        box-shadow: inset 0 0 0 1px #ff4d4d;
+        color: #b30000;
+        font-family: Georgia, Sans-Serif;
+        font-size: 1.38rem;
+        margin: 0.5em;
+        min-width: 150px;
+        padding: 6px;
+      }
+      
+      #buttonsDiv {
+        text-align: center;
+        width: 100%;
+      }
+      
+      #btnExit {
+        float: left;
+        margin-left: 20px;
+      }
+      
+      #btnReplayVideo {
+        background: none;
+        border: none;
+        color: #579DCE;
+        display: block;
+        font-size: 1.5rem;
+        font-weight: bold;
+        margin-bottom: 10px;
+        padding: 0;
+      }
+      
+      #btnSubmit {
+        float: right;
+        margin-right: 20px;
+      }
+      
+      footer {
+        clear: both;
+      }
+      
+      #messageDiv {
+        height: 30px;
+        max-width: 100%;
+        margin: 20px;
+        padding: 10px;
+      }
+      
+      .messageDivNeutral {
+        background: #f2eef6;
+        border: 1px solid #604383;
+        box-shadow: inset 0 0 0 1px #a389c2;
+      }
+      
+      .messageDivCorrect {
+        background: #ebfaeb;
+        border: 1px solid #248f24;
+        box-shadow: inset 0 0 0 1px #70db70;
+        color: #248f24;
+      }
+      
+      .messageDivIncorrect {
+        background-color: #ffb3b3;
+        border: 1px solid #b30000;
+        box-shadow: inset 0 0 0 1px #ff4d4d;
+        color: #b30000;
+      }
+      
+      select {
+        font-size: 1.25rem;
+        max-width: 100%;
+      }
+      
+    </style>
+  </head>
+  <body>
+    <header>
+    </header>
+    <main>
+      <h2>Instructions:</h2>
+      <p>What would you do now? Place the following tasks in the order they need to be completed for the patient to survive. Make sure all items are filled in, and selections are only used once.</p>
+      
+      
+      <ol type="A" class="testOptions">
+        <button id="btnReplayVideo">Replay Video</button>
+
+      </ol>
+      
+      <h2>Answer:</h2>
+
+      <ol class="selectionList">
+      
+      </ol>
+      <div id="buttonsDiv">
+        <div id="messageDiv" class="messageDivNeutral"><span id="messageSpan"></span></div>
+        <button id="btnExit" type="submit">Exit Game</button>
+        <button id="btnClear" type="submit">Clear Selections</button>
+        <button id="btnSubmit" type="submit">Submit Answer</button>
+      </div>
+      <audio id="failAudio">
+        <source src="http://arisgames.org/server/gamedatav2/27300/arise5d33f61887083bc46b4a46b6a3024fa.mp3" type="audio/mp3">
+      </audio>
+    </main>
+    <footer>
+      <small>&copy; 2017 ARISE Project</small>
+    </footer>
+<!--    <script src="dropDownJS.js"></script>-->
+    <script type="text/javascript">
+      var choices = ["(1)Check carotid pulse for 10 seconds", "(2)Direct someone to call 911", "(3)Direct someone to obtain AED", "(4)Call the family member"];
+
+      // Correct order: 3, 1, 5, 2, 4
+      var optionList = document.querySelector(".testOptions");
+      var selectionList = document.querySelector(".selectionList");
+      var btnSubmit = document.querySelector("#btnSubmit");
+      var btnExit = document.querySelector("#btnExit");
+      //var btnReplayVideo = document.querySelector("#btnReplayVideo");
+      var btnClear = document.querySelector("#btnClear");
+      var failAudio = document.querySelector("#failAudio");
+      var messageDiv = document.querySelector("#messageDiv");
+      var messageSpan = document.querySelector("#messageSpan");
+      var message;
+      var answers = [];
+      var attempts = 0;
+      var seconds = 0;
+      
+      // Constants
+      var EXIT_CONVO_ID = 94813;
+      var FAIL_PLAQUE_ID = 133389;
+      var NUM_OPTIONS = 4;
+      var PASSED = 1;
+      var SEQUENCEQ1_VIDEO_ID = 133015;
+      var SUCCESS_PLAQUE_ID = 133388;
+
+      btnClear.addEventListener("click", btnClearHandler, false);
+      
+      // Create the letter list of choices under "Replay Video"
+      for (var i = 0; i < choices.length; i++) {
+        var optionsListLi = document.createElement("li");
+        var answer = document.createTextNode(choices[i]);
+
+        optionsListLi.appendChild(answer);
+        optionList.appendChild(optionsListLi);
+      }
+      
+      // Creates the <select> and populates each one with the options from the choices array
+      for (var i = 0; i < NUM_OPTIONS; i++) {
+
+        var selectli = document.createElement("li");
+        var selection = document.createElement("select");
+        selection.id = "position" + (i + 1);
+
+        var option = document.createElement("option");
+        option.value = "option0";
+
+        var optionText = document.createTextNode("");
+        option.appendChild(optionText);
+
+        selection.appendChild(option);
+
+        for (var x = 0; x < choices.length; x++) {
+
+          var choiceOption = document.createElement("option");
+          choiceOption.value = "option" + (x + 1);
+
+          var choiceText = document.createTextNode(choices[x]);
+          choiceOption.appendChild(choiceText);
+          selection.appendChild(choiceOption);
+
+        }
+
+        selectli.appendChild(selection);  
+        selectionList.appendChild(selectli);
+      }
+
+      var ARIS = {};
+
+      ARIS.ready = function() {
+      
+      var btnReplayVideo = document.querySelector("#btnReplayVideo");
+      var attempts_id = ARIS.cache.idForItemName('Attempts');
+      var seconds_id = ARIS.cache.idForItemName('Seconds');
+      var sequencePassedQ1_id = ARIS.cache.idForItemName('SequencePassedQ1');
+      var timesGuessed_id = ARIS.cache.idForItemName('SequenceQ1TimesGuessed');
+      
+      btnSubmit.addEventListener("click", btnSubmitHandler, false);
+        
+      btnExit.addEventListener("click", function() {
+        
+        btnExitHandler(timesGuessed_id, attempts);
+        
+      }, false);
+        
+      btnReplayVideo.addEventListener("click", btnReplayHandler, false);
+      
+      
+      var timesGuessed_qty = ARIS.cache.getPlayerItemCount(timesGuessed_id);
+      var attempts = timesGuessed_qty;
+       
+      if (timesGuessed_qty > 0) {
+        btnReplayVideo.innerHTML = "";
+      }
+
+      function btnSubmitHandler() {
+
+        // get the current values of the drop down menus
+        var answer1 = document.getElementById("position1");
+        var answer1Value = answer1.options[answer1.selectedIndex].value;
+
+        var answer2 = document.getElementById("position2");
+        var answer2Value = answer2.options[answer2.selectedIndex].value;
+
+        var answer3 = document.getElementById("position3");
+        var answer3Value = answer3.options[answer3.selectedIndex].value;
+
+        var answer4 = document.getElementById("position4");
+        var answer4Value = answer4.options[answer4.selectedIndex].value;
+
+//        var answer5 = document.getElementById("position5");
+//        var answer5Value = answer5.options[answer5.selectedIndex].value;
+
+        // clear the answers array of previous selections by assigning it an empty array
+        answers = [];
+        answers.push(answer1Value);
+        answers.push(answer2Value);
+        answers.push(answer3Value);
+        answers.push(answer4Value);
+        //answers.push(answer5Value);
+        
+        // Step 2: Are the selections in the right order?
+        if (isCorrectOrder(answers)) {
+          
+//          ARIS.setItemCount(tries_id, tries);
+//          ARIS.setItemCount(sequencePassed_id, 1);
+          
+          attempts += 1;
+          seconds = attempts * 30;
+          
+          messageDiv.classList.add("messageDivCorrect");
+          messageDiv.classList.remove("messageDivNeutral");
+          
+          ARIS.takeItemCount(seconds_id, seconds);
+          ARIS.takeItemCount(attempts_id, (attempts - 1));
+          ARIS.setItemCount(sequencePassedQ1_id, PASSED);
+          
+          message = "Correct! Scenario will comtinue automatically.";
+          
+          setTimeout(function() {
+              
+              ARIS.exitToPlaque(SUCCESS_PLAQUE_ID);
+              
+          }, 2000);
+
+        } else if (isAnyBlank(answers)) {
+          
+//          messageDiv.classList.add("messageDivIncorrect")
+//          messageDiv.classList.remove("messageDivNeutral");
+          alertWrong();
+          
+          message = "Please check your answers and make sure all steps are filled out.";
+          
+//          setTimeout(function() {
+//              
+//            messageDiv.classList.add("messageDivNeutral")
+//            messageDiv.classList.remove("messageDivIncorrect");
+//              
+//          }, 4000);
+
+        } else if(isAnySame(answers)){
+          
+          alertWrong();
+          
+          message = "Please make sure all your selections are different.";
+
+        } else {
+
+          // Do they have attempts remaining?
+          if (attempts < 2) {
+            attempts += 1;
+            
+            btnReplayVideo.style.display = "none";
+            
+            failAudio.play();
+            alertWrong();
+            btnClearHandler();
+            
+            message = "Incorrect. Please try again. You have attempted " + attempts + " time(s)";
+            
+            ARIS.giveItemCount(timesGuessed_id, 1);
+            ARIS.takeItemCount(103174,1);
+
+
+          } else {
+            
+            attempts += 1;
+            seconds = attempts * 30;
+
+            ARIS.takeItemCount(seconds_id, seconds);
+            ARIS.takeItemCount(attempts_id, attempts);
+            
+            alertWrong();
+            
+            message = "You have tried too many times.";
+            
+            setTimeout(function() {
+              
+              ARIS.exitToPlaque(FAIL_PLAQUE_ID);
+              
+            }, 3000);
+            
+          }
+
+        }  
+        
+        messageSpan.innerHTML = message;
+
+      }
+
+      };
+      
+      function alertWrong() {
+        
+        messageDiv.classList.add("messageDivIncorrect");
+        messageDiv.classList.remove("messageDivNeutral");
+        
+        setTimeout(function() {
+              
+          messageDiv.classList.add("messageDivNeutral");
+          messageDiv.classList.remove("messageDivIncorrect");
+              
+        }, 3000);
+        
+      }
+      
+      function isAnySame(array) {
+
+        for (var i = 0; i < array.length; i++) {
+
+          for (var x = i + 1; x < array.length; x++) {
+
+
+            if (array[i] == array[x]) {
+
+              return true;
+            }
+
+          }
+        }
+
+        return false;
+      }
+      
+      function isAnyBlank(array) {
+        
+        for (var i = 0; i < array.length; i++) {
+          
+          if (array[i] == "option0") {
+            
+            return true;
+          }
+        }
+        
+        return false;
+      }
+      
+      function isCorrectOrder(array) {
+        
+        if (array[0] == "option1" && array[1] == "option2" && array[2] == "option3" && array[3] == "option4") {
+          
+          return true;
+        }
+        
+        return false;
+        
+      }
+      
+      function btnClearHandler() {
+        
+        var selections = document.querySelectorAll("select");
+        
+        for (var i = 0; i < selections.length; i++) {
+          
+         selections[i].selectedIndex = "0";
+          
+        }
+      }
+      
+      function btnExitHandler(timesGuessed_id, attempts) {
+        
+        ARIS.setItemCount(timesGuessed_id, attempts);
+        ARIS.exitToDialog(EXIT_CONVO_ID);
+      }
+      
+      function btnReplayHandler() {
+        
+        ARIS.exitToPlaque(SEQUENCEQ1_VIDEO_ID);
+      }
+
+    </script>
+  </body>
+</html>
